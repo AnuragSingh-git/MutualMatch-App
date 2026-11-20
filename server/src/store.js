@@ -23,7 +23,7 @@ const demoUsers = profiles.slice(0, 10).map(profile => ({
   password: 'CoyDemo123!'
 }));
 const hash = (password, salt) => scryptSync(password, salt, 64).toString('hex');
-const initial = () => ({ version: 3, users: demoUsers.map(u => { const salt = randomBytes(16).toString('hex'); return { id: u.id, profileId: u.profileId, name: u.name, email: u.email, salt, passwordHash: hash(u.password, salt) }; }), swipes: [], blocks: [], reports: [], preferences: [] });
+const initial = () => ({ version: 4, users: demoUsers.map(u => { const salt = randomBytes(16).toString('hex'); return { id: u.id, profileId: u.profileId, name: u.name, email: u.email, salt, passwordHash: hash(u.password, salt) }; }), customProfiles: [], swipes: [], blocks: [], reports: [], preferences: [] });
 let initialization;
 
 export async function readState() {
@@ -53,13 +53,24 @@ async function ensureDemoAccounts(state) {
   if (!Array.isArray(state.blocks)) { state.blocks = []; safetyMigration = true; }
   if (!Array.isArray(state.reports)) { state.reports = []; safetyMigration = true; }
   if (!Array.isArray(state.preferences)) { state.preferences = []; safetyMigration = true; }
+  if (!Array.isArray(state.customProfiles)) { state.customProfiles = []; safetyMigration = true; }
   state.users = Array.isArray(state.users) ? state.users : [];
-  const migrationNeeded = state.users.length !== demoUsers.length || demoUsers.some(account => {
+  const originalUserCount = state.users.length;
+  const demoUsersMissing = demoUsers.some(account => {
     const found = state.users.find(user => user.id === account.id);
     return !found?.salt || !found?.passwordHash || found.email !== account.email || found.profileId !== account.profileId || found.name !== account.name;
   });
-  if (migrationNeeded) state.users = initial().users;
-  if (migrationNeeded || safetyMigration) await writeState(state);
+  const customProfileIds = new Set(state.customProfiles.map(profile => profile.id));
+  const customUsers = state.users.filter(user => !demoUsers.some(account => account.id === user.id) && customProfileIds.has(user.profileId));
+  if (demoUsersMissing) {
+    const defaults = initial().users;
+    const seededUsers = demoUsers.map(account => state.users.find(user => user.id === account.id && user.salt && user.passwordHash && user.email === account.email && user.profileId === account.profileId && user.name === account.name) || defaults.find(user => user.id === account.id));
+    state.users = [...seededUsers, ...customUsers];
+  } else {
+    state.users = [...demoUsers.map(account => state.users.find(user => user.id === account.id)), ...customUsers];
+  }
+  const changed = demoUsersMissing || safetyMigration || originalUserCount !== state.users.length;
+  if (changed) await writeState(state);
   return state;
 }
 export async function writeState(state) {
@@ -71,12 +82,26 @@ export async function writeState(state) {
   await fs.rename(temp, file);
 }
 export async function resetState() { const state = initial(); await writeState(state); return state; }
+export function getProfiles(state) { return [...profiles, ...(state.customProfiles || [])]; }
+export function createAccount(state, details) {
+  const profileNumber = Math.max(0, ...getProfiles(state).map(profile => Number(profile.id.slice(1)) || 0)) + 1;
+  if (profileNumber > 999) throw new Error('No demo profile IDs remain.');
+  const id = `p${String(profileNumber).padStart(3, '0')}`;
+  const salt = randomBytes(16).toString('hex');
+  const avatar = profiles.find(profile => profile.id === details.photoId) || profiles[0];
+  const profile = { id, name: details.name, age: details.age, city: details.city, bio: details.bio, interests: details.interests, photo: avatar.photo, accent: '#bd806c', likedYou: false };
+  const user = { id, profileId: id, name: details.name, email: details.email, salt, passwordHash: hash(details.password, salt) };
+  state.customProfiles.push(profile);
+  state.users.push(user);
+  state.preferences.push({ userId: id, city: details.discoveryCity, interests: details.discoveryInterests });
+  return { user, profile };
+}
 export function getFeed(state, userId) {
   const decided = new Set(state.swipes.filter(s => s.userId === userId).map(s => s.profileId));
   const ownProfileId = state.users?.find(user => user.id === userId)?.profileId;
   const blocked = new Set(state.blocks.filter(block => block.userId === userId).map(block => block.profileId));
   const preferences = getPreferences(state, userId);
-  return profiles.filter(p => p.id !== ownProfileId && !blocked.has(p.id) && !decided.has(p.id)
+  return getProfiles(state).filter(p => p.id !== ownProfileId && !blocked.has(p.id) && !decided.has(p.id)
     && (!preferences.city || p.city === preferences.city)
     && (!preferences.interests.length || preferences.interests.some(interest => p.interests.includes(interest))))
     .map(({ likedYou, ...publicProfile }) => publicProfile);
@@ -89,11 +114,11 @@ export function getMatches(state, userId) {
   const likes = new Set(state.swipes.filter(s => s.userId === userId && s.direction === 'like').map(s => s.profileId));
   const ownProfileId = state.users?.find(user => user.id === userId)?.profileId;
   const blocked = new Set(state.blocks.filter(block => block.userId === userId).map(block => block.profileId));
-  return profiles.filter(p => p.id !== ownProfileId && !blocked.has(p.id) && p.likedYou && likes.has(p.id)).map(({ likedYou, ...match }) => match);
+  return getProfiles(state).filter(p => p.id !== ownProfileId && !blocked.has(p.id) && p.likedYou && likes.has(p.id)).map(({ likedYou, ...match }) => match);
 }
 export function getBlockedProfiles(state, userId) {
   const blockedIds = new Set(state.blocks.filter(block => block.userId === userId).map(block => block.profileId));
-  return profiles.filter(profile => blockedIds.has(profile.id)).map(({ likedYou, ...profile }) => profile);
+  return getProfiles(state).filter(profile => blockedIds.has(profile.id)).map(({ likedYou, ...profile }) => profile);
 }
 export function blockProfile(state, userId, profileId) {
   if (state.blocks.some(block => block.userId === userId && block.profileId === profileId)) return false;
@@ -116,9 +141,9 @@ export function undoLastSwipe(state, userId) {
   }
   return latestIndex < 0 ? null : state.swipes.splice(latestIndex, 1)[0];
 }
-export function getPublicUser(user) {
+export function getPublicUser(user, state) {
   if (!user) return null;
-  const profile = profiles.find(p => p.id === user.profileId);
+  const profile = getProfiles(state || { customProfiles: [] }).find(p => p.id === user.profileId);
   return { id: user.id, profileId: user.profileId || null, name: user.name, email: user.email, photo: profile?.photo || null, age: profile?.age || null, bio: profile?.bio || null, city: profile?.city || null, interests: profile?.interests || [] };
 }
 export { profiles };

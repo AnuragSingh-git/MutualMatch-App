@@ -47,6 +47,23 @@ test('feed has at least 30 complete public profiles and never reveals incoming l
   assert.ok(profiles.every(p => !Object.hasOwn(p, 'likedYou')));
   const canonical=await request('/feed'); assert.equal(canonical.status,200);
 });
+test('sign-up collects a profile and discovery preferences, then uses the same ID', async () => {
+  const options=await fetch(`${base}/api/auth/signup-options`).then(r=>r.json());
+  assert.ok(options.cities.includes('Delhi')&&options.interests.includes('podcasts')&&options.photos.length>0);
+  const body={name:'New Demo User',email:'new.demo@example.com',password:'StrongPass123!',age:22,city:'Delhi',bio:'Here to meet new people and find great coffee.',interests:['podcasts','coffee'],photoId:'p001',discoveryCity:'Pune',discoveryInterests:['pottery']};
+  const response=await fetch(`${base}/api/auth/signup`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});
+  assert.equal(response.status,201); const result=await response.json();
+  assert.equal(result.user.id,'p036'); assert.equal(result.user.profileId,result.user.id); assert.equal(result.user.city,'Delhi');
+  const auth={authorization:`Bearer ${result.token}`};
+  assert.equal((await fetch(`${base}/api/auth/me`,{headers:auth}).then(r=>r.json())).user.profileId,'p036');
+  assert.deepEqual(await fetch(`${base}/api/preferences`,{headers:auth}).then(r=>r.json()).then(r=>r.preferences),{city:'Pune',interests:['pottery']});
+  const feed=await fetch(`${base}/feed`,{headers:auth}).then(r=>r.json());
+  assert.ok(!feed.profiles.some(profile=>profile.id==='p036'));
+  assert.ok(feed.profiles.every(profile=>profile.city==='Pune'&&profile.interests.includes('pottery')));
+  assert.equal((await fetch(`${base}/api/auth/signup`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)})).status,409);
+  const invalid=await fetch(`${base}/api/auth/signup`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({...body,email:'underage@example.com',age:17})});
+  assert.equal(invalid.status,400);
+});
 test('discovery preferences filter and persist per account', async () => {
   const invalidCity=await request('/api/preferences',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({city:'Atlantis',interests:[]})}); assert.equal(invalidCity.status,400);
   const invalidInterest=await request('/api/preferences',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({city:'Pune',interests:['not-a-real-interest']})}); assert.equal(invalidInterest.status,400);

@@ -25,6 +25,7 @@ A standalone, mobile-first Discover experience inspired by the Coy SDE Intern as
 - Home placeholder and Discover navigation, responsive for mobile and desktop.
 - 35 fictional, seeded profiles with photos, bios, city and interests; 10 have seeded incoming likes for mutual-match demos.
 - Ten sign-in demo IDs map directly to ten profiles. The signed-in profile appears in the app header/sidebar and is excluded from that account's own Discover feed.
+- Sign-up collects profile details and discovery preferences together, then assigns a demo ID equal to the new profile ID.
 - Saved discovery preferences filter the feed by city and up to three interests, separately for each account.
 - One-at-a-time profile cards, swipe/drag gestures, like/pass buttons, animation and feedback.
 - Decisions persist to disk; a decided profile never appears in the feed again until reset.
@@ -127,6 +128,10 @@ Body: `{ "email": "p001", "password": "CoyDemo123!" }` or use the account email.
 
 Public list of the ten intentionally seeded demo IDs and their matching public profiles. All accounts use the same demo password; no password hashes are returned.
 
+### `GET /api/auth/signup-options` and `POST /api/auth/signup`
+
+The sign-up form asks for name, email, password, age (18+), city, bio, profile interests, and a demo photo. It also collects the initial discovery city and up to three preferred interests. The API validates each field, hashes the password, creates the profile and account together, saves the preferences, and signs the new user in. The generated ID is sequential (`p036` after the 35 seeded profiles) and is identical to the new profile ID; the sign-up confirmation and account panel show it. Duplicate email returns `409`.
+
 ### `GET /api/auth/me`
 
 Returns the current authenticated user and their matching profile identity. Missing, invalid or expired tokens return `401`.
@@ -189,7 +194,7 @@ Errors use `{ "error": "..." }`. Browser requests are limited to the configured 
 
 ## Architecture and privacy notes
 
-The client calls the Express API and never calculates reciprocity itself. Seed passwords are stored using Node scrypt and per-user random salts; the API issues signed, expiring bearer tokens. Each demo account maps to its corresponding seeded profile ID; that profile is displayed as the signed-in identity and filtered out of its own feed. Swipes, preferences, blocks and reports are scoped to the authenticated account. Preferences are validated server-side and applied before feed serialization. Blocking removes a profile from that account's matches as well as its feed. Reports are retained privately in demo storage and are not exposed by any report-list endpoint. JSON mode writes `server/data/state.json` through a temporary file followed by rename; MongoDB mode stores the demo state document in the configured collection. Feed serialization strips seed-only `likedYou` metadata. Match calculation is server-side and requires both a seeded incoming like and the current user's persisted `like` decision. This authentication and storage design is for local demonstration. Before public deployment, set a strong `AUTH_SECRET`, use HTTPS, move tokens to secure HttpOnly cookies or a carefully reviewed token strategy, add rate limiting and account lifecycle controls, and use transactional persistence for concurrent writes.
+The client calls the Express API and never calculates reciprocity itself. Seed and sign-up passwords are stored using Node scrypt and per-user random salts; the API issues signed, expiring bearer tokens. Each account maps to a profile ID; the signed-in profile is displayed as the user's identity and filtered out of its own feed. Sign-up creates that profile, account, and discovery preferences together. Swipes, preferences, blocks and reports are scoped to the authenticated account. Preferences are validated server-side and applied before feed serialization. Blocking removes a profile from that account's matches as well as its feed. Reports are retained privately in demo storage and are not exposed by any report-list endpoint. JSON mode writes `server/data/state.json` through a temporary file followed by rename; MongoDB mode stores the demo state document in the configured collection. Feed serialization strips seed-only `likedYou` metadata. Match calculation is server-side and requires both a seeded incoming like and the current user's persisted `like` decision. This authentication and storage design is for local demonstration. Before public deployment, set a strong `AUTH_SECRET`, use HTTPS, move tokens to secure HttpOnly cookies or a carefully reviewed token strategy, add rate limiting and account lifecycle controls, and use transactional persistence for concurrent writes.
 
 ## Project structure
 

@@ -47,6 +47,18 @@ test('feed has at least 30 complete public profiles and never reveals incoming l
   assert.ok(profiles.every(p => !Object.hasOwn(p, 'likedYou')));
   const canonical=await request('/feed'); assert.equal(canonical.status,200);
 });
+test('discovery preferences filter and persist per account', async () => {
+  const invalidCity=await request('/api/preferences',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({city:'Atlantis',interests:[]})}); assert.equal(invalidCity.status,400);
+  const invalidInterest=await request('/api/preferences',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({city:'Pune',interests:['not-a-real-interest']})}); assert.equal(invalidInterest.status,400);
+  const saved=await request('/api/preferences',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({city:'Pune',interests:['pottery']})}); assert.equal(saved.status,200);
+  const feed=await request('/feed').then(r=>r.json()); assert.deepEqual(feed.profiles.map(p=>p.id),['p003']);
+  assert.deepEqual(await request('/api/preferences').then(r=>r.json()).then(r=>r.preferences),{city:'Pune',interests:['pottery']});
+  const other=await fetch(`${base}/api/auth/login`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'p002',password:'CoyDemo123!'})}).then(r=>r.json());
+  const otherFeed=await fetch(`${base}/feed`,{headers:{authorization:`Bearer ${other.token}`}}).then(r=>r.json());
+  assert.ok(otherFeed.profiles.some(profile=>profile.city!=='Pune'),'filters must not leak across accounts');
+  const cleared=await request('/api/preferences',{method:'PUT',headers:{'content-type':'application/json'},body:JSON.stringify({city:'',interests:[]})}); assert.equal(cleared.status,200);
+  assert.ok((await request('/feed').then(r=>r.json())).profiles.length>1);
+});
 test('only a mutual like returns a match; swiped profiles stay out of feed', async () => {
   assert.equal((await request('/api/swipe',{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({profileId:'p001',direction:'like'})})).status,400);
   let r = await request('/api/swipe', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({profileId:'p002',direction:'like'})});
@@ -63,6 +75,25 @@ test('only a mutual like returns a match; swiped profiles stay out of feed', asy
   const undoMatch=await request('/api/swipe/undo',{method:'POST'}); assert.equal((await undoMatch.json()).swipe.profileId,'p002');
   assert.equal((await (await request('/api/matches')).json()).matches.length, 0);
   assert.ok((await (await request('/api/feed')).json()).profiles.some(p=>p.id==='p002'));
+});
+test('blocking hides a profile from feed and matches; reporting also blocks privately', async () => {
+  const post=(route,body,auth=token)=>fetch(`${base}${route}`,{method:'POST',headers:{authorization:`Bearer ${auth}`,'content-type':'application/json'},body:JSON.stringify(body)});
+  const mutual=await post('/api/swipe',{profileId:'p002',direction:'like'}); assert.equal((await mutual.json()).matched,true);
+  assert.equal((await (await request('/api/matches')).json()).matches.length,1);
+  assert.equal((await post('/api/safety/block',{profileId:'p002'})).status,201);
+  assert.ok(!(await (await request('/api/feed')).json()).profiles.some(p=>p.id==='p002'));
+  assert.equal((await (await request('/api/matches')).json()).matches.length,0);
+  assert.deepEqual((await (await request('/api/safety/blocked')).json()).profiles.map(p=>p.id),['p002']);
+  assert.equal((await post('/api/safety/block',{profileId:'p002'})).status,200,'blocking twice is safe and idempotent');
+  assert.equal((await post('/api/safety/report',{profileId:'p003',reason:'made_up_reason'})).status,400);
+  assert.equal((await post('/api/safety/report',{profileId:'p003',reason:'harassment'})).status,201);
+  assert.ok(!(await (await request('/api/feed')).json()).profiles.some(p=>p.id==='p003'));
+  const blocked=await request('/api/safety/blocked'); assert.deepEqual((await blocked.json()).profiles.map(p=>p.id),['p002','p003']);
+  const other=await fetch(`${base}/api/auth/login`,{method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({email:'p002',password:'CoyDemo123!'})}).then(r=>r.json());
+  const otherFeed=await fetch(`${base}/api/feed`,{headers:{authorization:`Bearer ${other.token}`}}).then(r=>r.json());
+  assert.ok(otherFeed.profiles.some(p=>p.id==='p003'),'blocks must not leak across user accounts');
+  assert.equal((await post('/api/safety/unblock',{profileId:'p002'})).status,200);
+  assert.ok((await (await request('/api/matches')).json()).matches.some(p=>p.id==='p002'));
 });
 test('validates input and rejects a duplicate swipe', async () => {
   const post = body => request('/api/swipe', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body)});

@@ -9,6 +9,7 @@ A standalone, mobile-first Discover experience inspired by the Coy SDE Intern as
 ## Contents
 
 - [Highlights](#highlights)
+- [Two meaningful extra features](#two-meaningful-extra-features)
 - [Assessment coverage](#assessment-coverage)
 - [Run locally](#run-locally)
 - [Demo IDs](#demo-accounts)
@@ -24,10 +25,12 @@ A standalone, mobile-first Discover experience inspired by the Coy SDE Intern as
 - Home placeholder and Discover navigation, responsive for mobile and desktop.
 - 35 fictional, seeded profiles with photos, bios, city and interests; 10 have seeded incoming likes for mutual-match demos.
 - Ten sign-in demo IDs map directly to ten profiles. The signed-in profile appears in the app header/sidebar and is excluded from that account's own Discover feed.
+- Saved discovery preferences filter the feed by city and up to three interests, separately for each account.
 - One-at-a-time profile cards, swipe/drag gestures, like/pass buttons, animation and feedback.
 - Decisions persist to disk; a decided profile never appears in the feed again until reset.
 - Ten profile-backed demo IDs, explicit log out, scrypt-hashed passwords, signed 24-hour bearer tokens, and per-account swipe isolation.
 - Undo the most recent swipe for the signed-in account.
+- Report or block a profile from Discover or a matched profile; manage blocks in Safety Center.
 - Seeded incoming likes can only be revealed by a reciprocal like. Incoming likes are never sent in the feed or exposed by a separate API.
 - Matches view, mutual-match modal, empty states, recoverable API errors and reset-demo control.
 - Open any mutual match to view their full profile, bio, city and interests.
@@ -38,11 +41,21 @@ A standalone, mobile-first Discover experience inspired by the Coy SDE Intern as
 - **Part A:** Two Coy feature suggestions are included as clearly marked hypotheses; the README states they need validation because the live app was not explored for this submission.
 - **Part B:** The app has a blank Home tab and a mobile-first Discover tab with 35 complete mock profiles, drag swipes, desktop buttons, animations, feedback, persistent decisions, and a no-profiles-left state.
 - **Matching/privacy:** Ten seeded profiles carry incoming likes for the demo. A match is only returned after the signed-in profile likes one back. Feed responses omit incoming-like metadata, and matches contain only mutual likes.
+- **Safety:** Blocking hides a profile from that account's feed and matches. Reports require a selected reason, persist privately, and also block the profile. Block lists are isolated by demo account.
+- **Personalization:** City and interest filters are validated by the API, persisted per demo account, and applied before profiles are returned. Interests use an “any selected interest” match.
 - **Backend:** Express exposes `GET /feed`, `POST /swipe`, `GET /matches` (plus `/api` aliases), validates requests, and persists state in JSON or optional MongoDB storage.
 
-## Extra feature added for the assessment
+## Two meaningful extra features
 
-**Matched profile detail view:** after a mutual match, open **Matches** and select a person to view their full profile, bio, city and interests. The match screen only contains reciprocal likes; incoming one-sided likes remain private. I also added **Undo last swipe** as a small usability enhancement: it restores your latest passed or liked profile, and withdrawing a mutual like removes its match.
+### 1. Privacy and safety controls
+
+The profile **Safety options** menu lets a user block someone or report them for inappropriate content, a suspected fake profile, harassment, or another concern. A report immediately blocks the profile as well. Blocked people disappear from Discover and Matches, and can be reviewed or unblocked later in the **Safety Center**. These actions are saved per account, and no reporting identity or one-sided incoming like is exposed through the API. This gives the assignment's privacy promise a practical safety control and demonstrates backend validation, persistence, account isolation, and match cleanup. Reports are stored as demo data; there is no moderation queue or real Coy reporting service.
+
+### 2. Saved discovery preferences
+
+Each demo account can filter Discover by city and up to three interests. These preferences persist across reloads and are applied by the backend, while each account's choices remain isolated. Interest selections use “match any”; if no profile meets the saved filters, the empty state offers a clear path to preferences. This adds useful control for people with different location and interest priorities, and demonstrates validated, persisted user-specific product settings.
+
+Matched-profile details and **Undo last swipe** remain as smaller usability additions. Undoing a like removes the match that depended on it.
 
 ## Requirements
 
@@ -140,6 +153,10 @@ Body: `{ "profileId": "p001", "direction": "like" }`, where direction is `like` 
 
 The first reports whether the signed-in user has a decision that can be undone. The second removes that user's most recent swipe and returns its profile to the feed. It returns `404` when there is no swipe to undo. Undoing a like also removes any match that depended on it.
 
+### `GET /api/preferences` and `PUT /api/preferences`
+
+Preferences belong to the authenticated account. `GET` returns that account's saved city and interests plus the accepted options. `PUT` accepts `{ "city": "Pune", "interests": ["pottery", "art"] }`; use an empty city and empty interests to clear the filters. The API rejects unknown values or more than three interests. A city filter matches that city; selected interests match profiles with any one of those interests. Saved settings automatically affect `GET /feed`.
+
 ### `GET /matches` (`GET /api/matches`)
 
 Returns only reciprocal likes: `{ "matches": [...] }`. It never returns one-sided incoming likes.
@@ -147,6 +164,22 @@ Returns only reciprocal likes: `{ "matches": [...] }`. It never returns one-side
 ### `GET /api/health`
 
 Returns `{ "status": "ok" }` for a basic health check.
+
+### `GET /api/safety/blocked`
+
+Returns only the authenticated user's blocked public profiles.
+
+### `POST /api/safety/block`
+
+Body: `{ "profileId": "p020" }`. Blocks a profile for this account. It is removed from the account's feed and matches. Repeating the same block is safe and idempotent.
+
+### `POST /api/safety/report`
+
+Body: `{ "profileId": "p020", "reason": "harassment" }`. Allowed reasons are `inappropriate_content`, `suspected_fake`, `harassment`, and `other`. The report is stored privately and the profile is blocked for the reporting account. The app does not disclose report records or reporter identity through a read API.
+
+### `POST /api/safety/unblock`
+
+Body: `{ "profileId": "p020" }`. Removes the authenticated user's block. Existing swipe decisions still apply, so unblocking a previously swiped profile does not put it back in Discover.
 
 ### `POST /api/reset`
 
@@ -156,7 +189,7 @@ Errors use `{ "error": "..." }`. Browser requests are limited to the configured 
 
 ## Architecture and privacy notes
 
-The client calls the Express API and never calculates reciprocity itself. Seed passwords are stored using Node scrypt and per-user random salts; the API issues signed, expiring bearer tokens. Each demo account maps to its corresponding seeded profile ID; that profile is displayed as the signed-in identity and filtered out of its own feed. Each swipe is associated with an account, and feed/matches/reset operations are scoped to the authenticated account. The server owns a static seed catalog and a small user/swipes store. JSON mode writes `server/data/state.json` through a temporary file followed by rename; MongoDB mode stores the demo state document in the configured collection. Feed serialization strips seed-only `likedYou` metadata. Match calculation is server-side and requires both a seeded incoming like and the current user's persisted `like` decision. A pass or like remains excluded from that user's feed. This authentication and storage design is for local demonstration. Before public deployment, set a strong `AUTH_SECRET`, use HTTPS, move tokens to secure HttpOnly cookies or a carefully reviewed token strategy, add rate limiting and account lifecycle controls, and use transactional persistence for concurrent writes.
+The client calls the Express API and never calculates reciprocity itself. Seed passwords are stored using Node scrypt and per-user random salts; the API issues signed, expiring bearer tokens. Each demo account maps to its corresponding seeded profile ID; that profile is displayed as the signed-in identity and filtered out of its own feed. Swipes, preferences, blocks and reports are scoped to the authenticated account. Preferences are validated server-side and applied before feed serialization. Blocking removes a profile from that account's matches as well as its feed. Reports are retained privately in demo storage and are not exposed by any report-list endpoint. JSON mode writes `server/data/state.json` through a temporary file followed by rename; MongoDB mode stores the demo state document in the configured collection. Feed serialization strips seed-only `likedYou` metadata. Match calculation is server-side and requires both a seeded incoming like and the current user's persisted `like` decision. This authentication and storage design is for local demonstration. Before public deployment, set a strong `AUTH_SECRET`, use HTTPS, move tokens to secure HttpOnly cookies or a carefully reviewed token strategy, add rate limiting and account lifecycle controls, and use transactional persistence for concurrent writes.
 
 ## Project structure
 

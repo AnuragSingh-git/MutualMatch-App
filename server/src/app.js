@@ -1,8 +1,11 @@
 import express from 'express';
 import cors from 'cors';
 import { timingSafeEqual } from 'node:crypto';
-import { getFeed, getMatches, getPublicUser, undoLastSwipe, readState, writeState, resetState, profiles, demoUsers, hash } from './store.js';
+import { getFeed, getPreferences, getMatches, getBlockedProfiles, blockProfile, unblockProfile, reportProfile, getPublicUser, undoLastSwipe, readState, writeState, resetState, profiles, demoUsers, hash } from './store.js';
 import { createToken, requireAuth } from './auth.js';
+
+const validCities = new Set(profiles.map(profile => profile.city));
+const validInterests = new Set(profiles.flatMap(profile => profile.interests));
 
 export function createApp() {
   const app = express();
@@ -25,9 +28,62 @@ export function createApp() {
   });
   api.get('/auth/me', requireAuth, async (req, res, next) => { try { const state = await readState(); const user = state.users?.find(u => u.id === req.user.sub); if (!user) return res.status(401).json({ error: 'Account no longer exists.' }); res.json({ user: getPublicUser(user) }); } catch (e) { next(e); } });
   api.post('/auth/logout', (_req, res) => res.json({ ok: true }));
-  api.post('/reset', requireAuth, async (req, res, next) => { try { const state = await readState(); state.swipes = state.swipes.filter(s => s.userId !== req.user.sub); await writeState(state); res.json({ ok: true }); } catch (e) { next(e); } });
+  api.post('/reset', requireAuth, async (req, res, next) => { try { const state = await readState(); state.swipes = state.swipes.filter(s => s.userId !== req.user.sub); state.preferences = state.preferences.filter(p => p.userId !== req.user.sub); await writeState(state); res.json({ ok: true }); } catch (e) { next(e); } });
+  api.get('/preferences', requireAuth, async (req, res, next) => { try { const state = await readState(); res.json({ preferences: getPreferences(state, req.user.sub), cities: [...validCities].sort(), interests: [...validInterests].sort() }); } catch (e) { next(e); } });
+  api.put('/preferences', requireAuth, async (req, res, next) => {
+    try {
+      const { city = '', interests = [] } = req.body ?? {};
+      if (typeof city !== 'string' || (city && !validCities.has(city))) return res.status(400).json({ error: 'Choose a city from the available list.' });
+      if (!Array.isArray(interests) || interests.length > 3 || interests.some(interest => typeof interest !== 'string' || !validInterests.has(interest)) || new Set(interests).size !== interests.length) return res.status(400).json({ error: 'Choose up to three distinct interests from the available list.' });
+      const state = await readState();
+      const preferences = { userId: req.user.sub, city, interests };
+      const index = state.preferences.findIndex(entry => entry.userId === req.user.sub);
+      if (index < 0) state.preferences.push(preferences); else state.preferences[index] = preferences;
+      await writeState(state); res.json({ preferences: { city, interests } });
+    } catch (e) { next(e); }
+  });
   api.get('/feed', requireAuth, async (req, res, next) => { try { const state = await readState(); res.json({ profiles: getFeed(state, req.user.sub) }); } catch (e) { next(e); } });
   api.get('/matches', requireAuth, async (req, res, next) => { try { const state = await readState(); res.json({ matches: getMatches(state, req.user.sub) }); } catch (e) { next(e); } });
+  api.get('/safety/blocked', requireAuth, async (req, res, next) => {
+    try { const state = await readState(); res.json({ profiles: getBlockedProfiles(state, req.user.sub) }); }
+    catch (e) { next(e); }
+  });
+  api.post('/safety/block', requireAuth, async (req, res, next) => {
+    try {
+      const { profileId } = req.body ?? {};
+      if (typeof profileId !== 'string' || !/^p\d{3}$/.test(profileId)) return res.status(400).json({ error: 'profileId must be a valid profile ID.' });
+      if (!profiles.some(profile => profile.id === profileId)) return res.status(404).json({ error: 'Profile not found.' });
+      const state = await readState();
+      if (state.users.find(user => user.id === req.user.sub)?.profileId === profileId) return res.status(400).json({ error: 'You cannot block your own profile.' });
+      const created = blockProfile(state, req.user.sub, profileId);
+      if (created) await writeState(state);
+      res.status(created ? 201 : 200).json({ blocked: true });
+    } catch (e) { next(e); }
+  });
+  api.post('/safety/unblock', requireAuth, async (req, res, next) => {
+    try {
+      const { profileId } = req.body ?? {};
+      if (typeof profileId !== 'string' || !/^p\d{3}$/.test(profileId)) return res.status(400).json({ error: 'profileId must be a valid profile ID.' });
+      const state = await readState();
+      if (!unblockProfile(state, req.user.sub, profileId)) return res.status(404).json({ error: 'That profile is not in your blocked list.' });
+      await writeState(state); res.json({ blocked: false });
+    } catch (e) { next(e); }
+  });
+  api.post('/safety/report', requireAuth, async (req, res, next) => {
+    try {
+      const { profileId, reason } = req.body ?? {};
+      const allowedReasons = ['inappropriate_content', 'suspected_fake', 'harassment', 'other'];
+      if (typeof profileId !== 'string' || !/^p\d{3}$/.test(profileId)) return res.status(400).json({ error: 'profileId must be a valid profile ID.' });
+      if (!allowedReasons.includes(reason)) return res.status(400).json({ error: 'Choose one of the available report reasons.' });
+      if (!profiles.some(profile => profile.id === profileId)) return res.status(404).json({ error: 'Profile not found.' });
+      const state = await readState();
+      if (state.users.find(user => user.id === req.user.sub)?.profileId === profileId) return res.status(400).json({ error: 'You cannot report your own profile.' });
+      reportProfile(state, req.user.sub, profileId, reason);
+      blockProfile(state, req.user.sub, profileId);
+      await writeState(state);
+      res.status(201).json({ reported: true, blocked: true });
+    } catch (e) { next(e); }
+  });
   api.get('/swipe/last', requireAuth, async (req, res, next) => {
     try {
       const state = await readState(); const swipe = [...state.swipes].reverse().find(s => s.userId === req.user.sub);

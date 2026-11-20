@@ -71,7 +71,7 @@ npm run seed
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173). The API listens at [http://localhost:4000](http://localhost:4000). The client uses the Vite `/api` proxy by default. To point it at a separately hosted API, copy `client/.env.example` to `client/.env` and set `VITE_API_URL` to the backend origin (for example, `https://api.example.com`, with no trailing slash or `/api`). Set the backend's `CLIENT_ORIGIN` to your deployed frontend origin for CORS. Vite exposes `VITE_*` values in browser code, so never put secrets in them. In bash, copy the backend environment template with `cp .env.example .env` instead. To run the production client build use `npm run build`; serve the built `client/dist` separately behind the API for deployment.
+Open [http://localhost:5173](http://localhost:5173). The API listens at [http://localhost:4000](http://localhost:4000). The frontend reads `VITE_API_URL` from the same root `.env` file as the backend. Leave it blank to use the Vite `/api` proxy to `http://localhost:4000`; for a separately hosted API, set it to the backend origin (for example, `https://api.example.com`, with no trailing slash or `/api`). Restart the Vite dev server after changing it; production builds read this value when `npm run build` runs. Set the backend's `CLIENT_ORIGIN` to your deployed frontend origin for CORS. Vite exposes `VITE_*` values in browser code, so never put secrets in them. In bash, copy the backend environment template with `cp .env.example .env` instead. To run the production client build use `npm run build`; serve the built `client/dist` separately behind the API for deployment.
 
 ### Use MongoDB instead of JSON
 
@@ -222,8 +222,7 @@ coy-discover/
 │   │   ├── app.js              Express app and route mounting
 │   │   └── index.js            Server startup
 │   └── test/                   API behavior and privacy tests
-├── .env.example              Backend settings
-├── client/.env.example       Frontend API address
+├── .env.example              Backend settings and VITE_API_URL
 └── package.json
 ```
 

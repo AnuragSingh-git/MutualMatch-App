@@ -1,0 +1,1 @@
+export const api = async (url, options = {}) => { const token = localStorage.getItem('coy-demo-token'); const headers = {...(options.headers||{}), ...(token?{authorization:`Bearer ${token}`}:{})}; const r = await fetch(url, {...options,headers}); const data = await r.json(); if (!r.ok) throw new Error(data.error || 'Request failed'); return data; };

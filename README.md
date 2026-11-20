@@ -198,16 +198,30 @@ The client calls the Express API and never calculates reciprocity itself. Seed a
 
 ## Project structure
 
+The app is split by responsibility: the client keeps its API access and reusable UI separate from the app shell, while the server keeps HTTP routes, request authentication, and persistence in distinct layers.
+
 ```text
 coy-discover/
-├── client/                 React + Vite UI
-│   └── src/                App, base styles and mobile-first breakpoints
+├── client/
+│   └── src/
+│       ├── components/
+│       │   ├── auth/          Sign-in and profile creation UI
+│       │   └── shared/        Reusable empty-state UI
+│       ├── services/          Frontend API client
+│       ├── styles/            Base and mobile-first styles
+│       ├── App.jsx            App state and screen composition
+│       └── main.jsx           React entry point
 ├── server/
-│   ├── data/                Runtime JSON state (created on first swipe)
-│   ├── src/data/            Fictional profile catalog
-│   ├── src/scripts/         Seed/reset commands
-│   ├── src/                 Express routes, storage and server entry
-│   └── test/                API behavior and privacy tests
+│   ├── data/                  Runtime JSON state (created on first run)
+│   ├── src/
+│   │   ├── data/              Fictional profile catalog
+│   │   ├── middleware/        Authentication middleware
+│   │   ├── routes/             Auth, discovery, and safety endpoints
+│   │   ├── scripts/            Seed/reset commands
+│   │   ├── services/           JSON/MongoDB state access
+│   │   ├── app.js              Express app and route mounting
+│   │   └── index.js            Server startup
+│   └── test/                   API behavior and privacy tests
 ├── .env.example
 └── package.json
 ```

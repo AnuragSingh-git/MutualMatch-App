@@ -2,10 +2,10 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { randomBytes, randomUUID, scryptSync } from 'node:crypto';
-import { profiles } from './data/profiles.js';
+import { profiles } from '../data/profiles.js';
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const file = path.resolve(here, process.env.DATA_FILE || '../data/state.json');
+const file = path.resolve(here, process.env.DATA_FILE || '../../data/state.json');
 let mongoClientPromise;
 async function mongoCollection() {
   if (!process.env.MONGODB_URI) return null;

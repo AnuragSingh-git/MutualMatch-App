@@ -1,0 +1,100 @@
+/* Small screens are the default; wider layouts progressively add space. */
+.topbar{height:58px;padding:0 max(16px,env(safe-area-inset-left));}
+.layout{display:block;min-height:calc(100vh - 58px);}
+.sidebar{display:none;}
+.main{width:100%;padding:0 16px calc(24px + env(safe-area-inset-bottom));}
+.mobile-tabs{height:48px;display:flex;align-items:stretch;gap:26px;position:sticky;top:0;z-index:2;margin:0 -16px 20px;padding:0 20px;background:#f8f6f2;border-bottom:1px solid #eae6df;}
+.mobile-tabs button{position:relative;border:0;background:transparent;color:#938a82;font-size:12px;font-weight:600;padding:0 3px;}
+.mobile-tabs button.selected{color:#b56c5a;}
+.mobile-tabs button.selected::after{content:'';position:absolute;bottom:-1px;left:0;right:0;height:2px;border-radius:2px;background:#c47c68;}
+.heading-row{align-items:flex-start;flex-direction:column;gap:13px;margin:0 auto 17px;}
+.heading-row h1{font-size:28px;}
+.heading-row .eyebrow{font-size:8px;}
+.subtitle{font-size:12px;}
+.view-switch{align-self:flex-start;}
+.discovery-card-wrap{width:min(100%,370px);}
+.profile-card,.card-skeleton{height:clamp(320px,calc(100dvh - 360px),470px);min-height:320px;border-radius:15px;}
+.profile-details{padding:20px 16px 17px;}
+.name-line h2{font-size:25px;}
+.bio{font-size:12px;}
+.tags{gap:5px;}
+.tags span{padding:5px 8px;font-size:9px;}
+.action-row{height:70px;gap:34px;}
+.action{width:52px;height:52px;}
+.swipe-note{gap:8px;font-size:9px;}
+.desktop-note{display:none;}
+.mobile-note{display:inline;}
+.match-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;}
+.match-photo{height:150px;}
+.match-info{padding:10px;}
+.match-info h3{font-size:14px;}
+.match-info .tags span{padding:4px 6px;font-size:8px;}
+.empty-state{height:calc(100dvh - 220px);min-height:300px;}
+.home-blank{min-height:65vh;}
+.matched-profile-photo{height:260px;}
+.matched-profile-info{padding:20px;}
+.view-profile-hint{margin-top:9px;}
+.demo-logins{max-height:330px;}
+.auth-shell{padding:24px 16px calc(22px + env(safe-area-inset-bottom));}
+.auth-brand{margin-bottom:22px;}
+.auth-card{padding:29px 23px 22px;}
+.demo-logins>button{min-height:48px;}
+
+@media (max-width:380px){
+  .main{padding-right:13px;padding-left:13px;}
+  .mobile-tabs{margin-right:-13px;margin-left:-13px;padding-left:17px;}
+  .profile-card,.card-skeleton{height:320px;min-height:320px;}
+  .profile-details{padding-right:14px;padding-left:14px;}
+  .name-line h2{font-size:23px;}
+  .match-photo{height:132px;}
+}
+
+@media (min-width:701px){
+  .topbar{height:70px;padding:0 28px;}
+  .layout{display:flex;min-height:calc(100vh - 70px);}
+  .sidebar{display:flex;width:215px;}
+  .main{width:calc(100% - 215px);padding:35px 30px;}
+  .mobile-tabs{display:none;}
+  .heading-row{align-items:flex-end;flex-direction:row;gap:18px;margin-bottom:26px;}
+  .heading-row h1{font-size:34px;}
+  .heading-row .eyebrow{font-size:9px;}
+  .subtitle{font-size:13px;}
+  .view-switch{align-self:auto;}
+  .discovery-card-wrap{width:346px;}
+  .profile-card,.card-skeleton{height:486px;min-height:0;border-radius:17px;}
+  .profile-details{padding:23px 21px 22px;}
+  .name-line h2{font-size:28px;}
+  .bio{font-size:13px;}
+  .tags{gap:6px;}
+  .tags span{padding:5px 9px;font-size:10px;}
+  .action-row{height:78px;gap:32px;}
+  .action{width:55px;height:55px;}
+  .swipe-note{gap:11px;font-size:10px;}
+  .desktop-note{display:flex;}
+  .mobile-note{display:none;}
+  .match-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:18px;}
+  .match-photo{height:205px;}
+  .match-info{padding:12px 14px 15px;}
+  .match-info h3{font-size:16px;}
+  .match-info .tags span{padding:5px 9px;font-size:10px;}
+  .matched-profile-photo{height:300px;}
+  .matched-profile-info{padding:23px 25px 25px;}
+  .home-blank{min-height:60vh;}
+  .auth-shell{padding:36px 18px 22px;}
+  .auth-brand{margin-bottom:34px;}
+  .auth-card{padding:34px 36px 25px;}
+}
+
+@media (min-width:1001px){
+  .topbar{padding:0 48px;}
+  .sidebar{width:248px;}
+  .main{width:min(100% - 248px,1200px);padding:43px 52px 34px;}
+  .discovery-card-wrap{width:346px;}
+  .match-grid{grid-template-columns:repeat(3,minmax(0,1fr));}
+}
+
+@media (min-width:1500px){
+  .main{padding-top:54px;}
+  .profile-card,.card-skeleton{height:520px;}
+  .discovery-card-wrap{width:370px;}
+}

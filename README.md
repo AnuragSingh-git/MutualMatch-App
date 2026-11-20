@@ -1,15 +1,32 @@
 # Coy Discover
 
-A standalone, mobile-first Discover experience inspired by the Coy SDE Intern assignment. It pairs a React/Vite client with a Node/Express API and configurable JSON-file or MongoDB storage. It includes a lightweight bearer-token sign-in flow and three seeded demo accounts. This is an independent mock project; it does not use Coy's code, services, or real user data.
+A standalone, mobile-first Discover experience inspired by the Coy SDE Intern assignment.
 
-## Features
+**React + Vite** · **Node + Express** · **JSON or MongoDB** · **35 mock profiles**
+
+> An independent demo project. It does not use Coy's code, services, or real user data.
+
+## Contents
+
+- [Highlights](#highlights)
+- [Assessment coverage](#assessment-coverage)
+- [Run locally](#run-locally)
+- [Demo IDs](#demo-accounts)
+- [MongoDB setup](#use-mongodb-instead-of-json)
+- [Tests](#test)
+- [API reference](#api)
+- [Privacy and architecture](#architecture-and-privacy-notes)
+- [Part A suggestions](#part-a--feature-suggestions-hypotheses-to-validate)
+- [Publish to GitHub](#publish-to-github)
+
+## Highlights
 
 - Home placeholder and Discover navigation, responsive for mobile and desktop.
 - 35 fictional, seeded profiles with photos, bios, city and interests; 10 have seeded incoming likes for mutual-match demos.
 - Ten sign-in demo IDs map directly to ten profiles. The signed-in profile appears in the app header/sidebar and is excluded from that account's own Discover feed.
 - One-at-a-time profile cards, swipe/drag gestures, like/pass buttons, animation and feedback.
 - Decisions persist to disk; a decided profile never appears in the feed again until reset.
-- Demo sign-in with scrypt-hashed passwords, signed 24-hour bearer tokens, and per-account swipe isolation.
+- Ten profile-backed demo IDs, explicit log out, scrypt-hashed passwords, signed 24-hour bearer tokens, and per-account swipe isolation.
 - Undo the most recent swipe for the signed-in account.
 - Seeded incoming likes can only be revealed by a reciprocal like. Incoming likes are never sent in the feed or exposed by a separate API.
 - Matches view, mutual-match modal, empty states, recoverable API errors and reset-demo control.
@@ -103,7 +120,7 @@ Returns the current authenticated user and their matching profile identity. Miss
 
 ### `POST /api/auth/logout`
 
-Returns `{ "ok": true }`; the client removes its locally stored token. The server remains stateless.
+The **Log out** button is visible in the app header on desktop and mobile. This endpoint returns `{ "ok": true }`; the client then removes its locally stored token and returns to sign-in. The server remains stateless.
 
 ### `GET /feed` (`GET /api/feed`)
 
@@ -146,7 +163,7 @@ The client calls the Express API and never calculates reciprocity itself. Seed p
 ```text
 coy-discover/
 ├── client/                 React + Vite UI
-│   └── src/                App and mobile-first styles
+│   └── src/                App, base styles and mobile-first breakpoints
 ├── server/
 │   ├── data/                Runtime JSON state (created on first swipe)
 │   ├── src/data/            Fictional profile catalog
@@ -178,5 +195,3 @@ git push -u origin main
 ```
 
 Replace `YOUR-USERNAME` and the repository URL with your own. Review the files before publishing. The included `.gitignore` excludes runtime data, dependencies, builds, and environment secrets. Publishing is left to you.
-#   M u t u a l M a t c h - A p p  
- 

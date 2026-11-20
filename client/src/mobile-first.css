@@ -39,6 +39,12 @@
 .auth-brand{margin-bottom:22px;}
 .auth-card{padding:29px 23px 22px;}
 .demo-logins>button{min-height:48px;}
+.top-right{gap:10px;}
+.header-user{display:flex;align-items:center;gap:8px;color:#605750;font-size:11px;font-weight:600;}
+.header-user .avatar{height:34px;width:34px;}
+.logout-button{display:flex;align-items:center;justify-content:center;gap:7px;padding:9px 11px;border:1px solid #ece4dc;border-radius:8px;background:#fffdfa;color:#7c6c62;font-size:11px;font-weight:600;transition:background .15s,color .15s,border-color .15s;}
+.logout-button:hover{background:#f8efeb;border-color:#e8d6cd;color:#ad6655;}
+.logout-button:focus-visible{outline:3px solid #bf7c69;outline-offset:2px;}
 
 @media (max-width:380px){
   .main{padding-right:13px;padding-left:13px;}
@@ -51,6 +57,9 @@
 
 @media (min-width:701px){
   .topbar{height:70px;padding:0 28px;}
+  .top-right{gap:18px;}
+  .settings{display:grid;}
+  .header-user>span:last-child{display:inline;}
   .layout{display:flex;min-height:calc(100vh - 70px);}
   .sidebar{display:flex;width:215px;}
   .main{width:calc(100% - 215px);padding:35px 30px;}
@@ -97,4 +106,10 @@
   .main{padding-top:54px;}
   .profile-card,.card-skeleton{height:520px;}
   .discovery-card-wrap{width:370px;}
+}
+
+@media (max-width:700px){
+  .settings{display:none;}
+  .header-user>span:last-child{display:none;}
+  .logout-button{padding:8px 9px;}
 }

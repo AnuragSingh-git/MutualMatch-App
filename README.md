@@ -23,7 +23,7 @@ A standalone, mobile-first Discover experience inspired by the Coy SDE Intern as
 ## Highlights
 
 - Home placeholder and Discover navigation, responsive for mobile and desktop.
-- 35 fictional, seeded profiles with photos, bios, city and interests; 10 have seeded incoming likes for mutual-match demos.
+- 35 fictional, seeded profiles with photos, bios, city and interests; 10 have seeded incoming likes for mutual match demos.
 - Ten sign-in demo IDs map directly to ten profiles. The signed in profile appears in the app header/sidebar and is excluded from that account's own Discover feed.
 - Sign-up collects profile details and discovery preferences together, then assigns a demo ID equal to the new profile ID.
 - Saved discovery preferences filter the feed by city and up to three interests, separately for each account.

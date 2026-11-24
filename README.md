@@ -160,7 +160,7 @@ The first reports whether the signed-in user has a decision that can be undone. 
 
 ### `GET /api/preferences` and `PUT /api/preferences`
 
-Preferences belong to the authenticated account. `GET` returns that account's saved city and interests plus the accepted options. `PUT` accepts `{ "city": "Pune", "interests": ["pottery", "art"] }`; use an empty city and empty interests to clear the filters. The API rejects unknown values or more than three interests. A city filter matches that city; selected interests match profiles with any one of those interests. Saved settings automatically affect `GET /feed`.
+Preferences belong to the authenticated account. `GET` returns that account's saved city and interests plus the accepted options. `PUT` accepts `{ "city": "Pune", "interests": ["pottery", "art"] }`; use an empty city and empty interests to clear the filters. The APIs rejects unknown values or more than three interests. A city filter matches that city; selected interests match profiles with any one of those interests. Saved settings automatically affect `GET /feed`.
 
 ### `GET /matches` (`GET /api/matches`)
 

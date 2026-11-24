@@ -29,7 +29,7 @@ A standalone, mobile-first Discover experience inspired by the Coy SDE Intern as
 - Saved discovery preferences filter the feed by city and up to three interests, separately for each account.
 - One-at-a-time profile cards, swipe/drag gestures, like/pass buttons, animation and feedback.
 - Decisions persist to disk; a decided profile never appears in the feed again until reset.
-- Ten profile-backed demo IDs, explicit log out, scrypt-hashed passwords, signed 24 hour bearer tokens, and per-account swipe isolation.
+- Ten profile-backed demo IDs, explicit log out, scrypt hashed passwords, signed 24 hour bearer tokens, and per-account swipe isolation.
 - Undo the most recent swipe for the signed-in account.
 - Report or block a profile from Discover or a matched profile; manage blocks in Safety Center.
 - Seeded incoming likes can only be revealed by a reciprocal like. Incoming likes are never sent in the feed or exposed by a separate API.

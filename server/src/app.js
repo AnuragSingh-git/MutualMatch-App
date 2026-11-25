@@ -12,7 +12,7 @@ export function createApp() {
   app.use(cors({ origin: process.env.CLIENT_ORIGIN || 'http://localhost:5173' }));
   app.use(express.json({ limit: '8kb' }));
 
-  // Keep the assessment's root paths and the namespaced paths available.
+  // Keep the assessment's root paths and the namespaced paths available
   apiRoutes.forEach(route => app.use('/api', route));
   apiRoutes.forEach(route => app.use(route));
 

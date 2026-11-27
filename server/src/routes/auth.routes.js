@@ -15,7 +15,7 @@ const router = Router();
 const validCities = new Set(profiles.map(profile => profile.city));
 const validInterests = new Set(profiles.flatMap(profile => profile.interests));
 
-//routes
+//auth routes
 
 router.get('/health', (_req, res) => res.json({ status: 'ok' }));
 
